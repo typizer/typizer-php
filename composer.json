@@ -1,0 +1,71 @@
+{
+  "name": "typizer/typizer",
+  "description": "Официальный PHP SDK для Typizer API — извлечение данных из документов в JSON по вашей схеме",
+  "type": "library",
+  "license": "MIT",
+  "keywords": [
+    "typizer",
+    "sdk",
+    "api",
+    "document extraction",
+    "document parsing",
+    "ocr",
+    "invoice",
+    "json schema",
+    "bitrix24",
+    "amocrm",
+    "извлечение данных",
+    "распознавание документов",
+    "счета",
+    "УПД"
+  ],
+  "homepage": "https://typizer.ru",
+  "authors": [
+    {
+      "name": "Typizer",
+      "email": "support@typizer.ru",
+      "homepage": "https://typizer.ru"
+    }
+  ],
+  "support": {
+    "email": "support@typizer.ru",
+    "docs": "https://docs.typizer.ru",
+    "source": "https://github.com/typizer/typizer-php"
+  },
+  "require": {
+    "php": ">=8.1",
+    "ext-json": "*"
+  },
+  "require-dev": {
+    "guzzlehttp/guzzle": "^7.8",
+    "php-http/discovery": "^1.19",
+    "phpunit/phpunit": "^10.5"
+  },
+  "suggest": {
+    "ext-curl": "Транспорт по умолчанию: без него нужен любой PSR-18 клиент (например, guzzlehttp/guzzle) и php-http/discovery",
+    "guzzlehttp/guzzle": "PSR-18 клиент для Psr18Transport, если ext-curl нет",
+    "php-http/discovery": "Находит установленный PSR-18 клиент и PSR-17 фабрики для Psr18Transport::discover()"
+  },
+  "autoload": {
+    "psr-4": {
+      "Typizer\\": "src/"
+    }
+  },
+  "autoload-dev": {
+    "psr-4": {
+      "Typizer\\Tests\\": "tests/"
+    }
+  },
+  "config": {
+    "sort-packages": true,
+    "platform": {
+      "php": "8.1.0"
+    },
+    "allow-plugins": {
+      "php-http/discovery": false
+    }
+  },
+  "scripts": {
+    "test": "phpunit"
+  }
+}
