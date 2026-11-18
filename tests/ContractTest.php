@@ -98,7 +98,7 @@ final class ContractTest extends TestCase
         sort($spec);
         sort($table);
         self::assertSame($spec, $table);
-        self::assertCount(49, $table, 'the public API has 49 operations today; update this count with the table');
+        self::assertCount(57, $table, 'the public API has 57 operations today; update this count with the table');
     }
 
     /** @return iterable<string, array{string}> */

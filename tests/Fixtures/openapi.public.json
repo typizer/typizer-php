@@ -41,6 +41,11 @@
       "description": "Готовые схемы: официальные схемы Typizer и схемы, опубликованные организациями. Схему можно использовать в прогоне по ссылке (`catalog`), добавить к себе или взять за основу."
     },
     {
+      "name": "Validators",
+      "x-displayName": "Проверки",
+      "description": "Свои проверки полей: именованные версионируемые правила (шаблон, длина, контрольная сумма, список, диапазон, дата, официальная проверка с условиями). Поле схемы подключает проверку ссылкой в `x-typizer-check` (`my/contract-no@1`, `vin@1`); при сохранении схемы ссылки фиксируются на точных версиях."
+    },
+    {
       "name": "Runs",
       "x-displayName": "Прогоны",
       "description": "Прогоны извлечения: один документ через типизатор или разовую схему."
@@ -412,13 +417,18 @@
               "inbound_mail": {
                 "type": "boolean",
                 "description": "Приём документов по почте («Почта для документов»)"
+              },
+              "validators_suggest": {
+                "type": "boolean",
+                "description": "Доступно `POST /v1/validators/suggest` — проверку можно составить по описанию словами"
               }
             },
             "required": [
               "billing_enabled",
               "edo_diadoc",
               "catalog_community",
-              "inbound_mail"
+              "inbound_mail",
+              "validators_suggest"
             ],
             "description": "Флаги функций текущей организации"
           }
@@ -764,6 +774,13 @@
             ],
             "description": "Откуда типизатор в каталоге; `null` — создан не из каталога"
           },
+          "checks": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TypizerCheck"
+            },
+            "description": "Проверки, на версиях которых зафиксирована текущая версия (ссылки из x-typizer-check). Есть в каждом ответе; необязательно в схеме, чтобы клиенты понимали и прежние ответы"
+          },
           "created_at": {
             "type": "string",
             "format": "date-time"
@@ -788,6 +805,30 @@
           "updated_at"
         ]
       },
+      "TypizerCheck": {
+        "type": "object",
+        "properties": {
+          "ref": {
+            "type": "string",
+            "example": "my/contract-no",
+            "description": "Ссылка без версии"
+          },
+          "version": {
+            "type": "string",
+            "example": "1.1.0",
+            "description": "Зафиксированная версия"
+          },
+          "name": {
+            "type": "string",
+            "example": "Номер договора"
+          }
+        },
+        "required": [
+          "ref",
+          "version",
+          "name"
+        ]
+      },
       "CreateTypizerRequest": {
         "type": "object",
         "properties": {
@@ -806,7 +847,7 @@
           "schema": {
             "type": "object",
             "additionalProperties": true,
-            "description": "Подмножество JSON Schema (draft 2020-12) с корнем `object`: не больше 200 полей и 10 уровней схемы (core), 131072 байт (128 КиБ) в компактном JSON в UTF-8, 64 уровней вложенности JSON (включая `examples`), и ни в одной строке нет NUL или непарного суррогата. Имена полей — буквы, десятичные цифры, `_` и `-`, начинаются с буквы или `_` (они становятся именами элементов XML). Порядок `properties` сохраняется: по нему идут столбцы результата, элементы XML и XSD."
+            "description": "Подмножество JSON Schema (draft 2020-12) с корнем `object`: не больше 200 полей и 10 уровней схемы (core), 131072 байт (128 КиБ) в компактном JSON в UTF-8, 64 уровней вложенности JSON (включая `examples`), и ни в одной строке нет NUL или непарного суррогата. Имена полей — буквы, десятичные цифры, `_` и `-`, начинаются с буквы или `_` (они становятся именами элементов XML). Порядок `properties` сохраняется: по нему идут столбцы результата, элементы XML и XSD. `x-typizer-check` поля — встроенная проверка (`inn`, `snils`…), ссылка на проверку (`vin@1`, `my/contract-no@1`) или сама проверка объектом прямо в схеме (`kind: \"rules\"`, `applies_to`, `rules`, `message`, необязательные `hint` и `tests`; до 8 КиБ) — отдельный вызов /v1/validators для неё не нужен."
           },
           "instructions": {
             "type": "string",
@@ -853,7 +894,7 @@
           "schema": {
             "type": "object",
             "additionalProperties": {},
-            "description": "Подмножество JSON Schema (draft 2020-12) с корнем `object`: не больше 200 полей и 10 уровней схемы (core), 131072 байт (128 КиБ) в компактном JSON в UTF-8, 64 уровней вложенности JSON (включая `examples`), и ни в одной строке нет NUL или непарного суррогата. Имена полей — буквы, десятичные цифры, `_` и `-`, начинаются с буквы или `_` (они становятся именами элементов XML). Порядок `properties` сохраняется: по нему идут столбцы результата, элементы XML и XSD."
+            "description": "Подмножество JSON Schema (draft 2020-12) с корнем `object`: не больше 200 полей и 10 уровней схемы (core), 131072 байт (128 КиБ) в компактном JSON в UTF-8, 64 уровней вложенности JSON (включая `examples`), и ни в одной строке нет NUL или непарного суррогата. Имена полей — буквы, десятичные цифры, `_` и `-`, начинаются с буквы или `_` (они становятся именами элементов XML). Порядок `properties` сохраняется: по нему идут столбцы результата, элементы XML и XSD. `x-typizer-check` поля — встроенная проверка (`inn`, `snils`…), ссылка на проверку (`vin@1`, `my/contract-no@1`) или сама проверка объектом прямо в схеме (`kind: \"rules\"`, `applies_to`, `rules`, `message`, необязательные `hint` и `tests`; до 8 КиБ) — отдельный вызов /v1/validators для неё не нужен."
           },
           "instructions": {
             "type": "string"
@@ -901,7 +942,7 @@
           "schema": {
             "type": "object",
             "additionalProperties": true,
-            "description": "Подмножество JSON Schema (draft 2020-12) с корнем `object`: не больше 200 полей и 10 уровней схемы (core), 131072 байт (128 КиБ) в компактном JSON в UTF-8, 64 уровней вложенности JSON (включая `examples`), и ни в одной строке нет NUL или непарного суррогата. Имена полей — буквы, десятичные цифры, `_` и `-`, начинаются с буквы или `_` (они становятся именами элементов XML). Порядок `properties` сохраняется: по нему идут столбцы результата, элементы XML и XSD."
+            "description": "Подмножество JSON Schema (draft 2020-12) с корнем `object`: не больше 200 полей и 10 уровней схемы (core), 131072 байт (128 КиБ) в компактном JSON в UTF-8, 64 уровней вложенности JSON (включая `examples`), и ни в одной строке нет NUL или непарного суррогата. Имена полей — буквы, десятичные цифры, `_` и `-`, начинаются с буквы или `_` (они становятся именами элементов XML). Порядок `properties` сохраняется: по нему идут столбцы результата, элементы XML и XSD. `x-typizer-check` поля — встроенная проверка (`inn`, `snils`…), ссылка на проверку (`vin@1`, `my/contract-no@1`) или сама проверка объектом прямо в схеме (`kind: \"rules\"`, `applies_to`, `rules`, `message`, необязательные `hint` и `tests`; до 8 КиБ) — отдельный вызов /v1/validators для неё не нужен."
           },
           "instructions": {
             "type": "string",
@@ -980,6 +1021,12 @@
           },
           "instructions": {
             "type": "string"
+          },
+          "checks": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TypizerCheck"
+            }
           },
           "created_at": {
             "type": "string",
@@ -1096,10 +1143,18 @@
               "catalog_entry"
             ]
           },
+          "type": {
+            "type": "string",
+            "enum": [
+              "schema",
+              "validator"
+            ],
+            "description": "`schema` — схема документа (добавляется к себе как типизатор); `validator` — проверка поля (подключается ссылкой в `x-typizer-check`, без установки)"
+          },
           "ref": {
             "type": "string",
             "example": "schet-faktura",
-            "description": "Ссылка для `catalog` в `POST /v1/extract`: `slug` или `publisher/slug`; можно добавить `@1` или `@1.2.0`"
+            "description": "Ссылка для `catalog` в `POST /v1/extract`: `slug` или `publisher/slug`; можно добавить `@1` или `@1.2.0`. У проверок — адрес в каталоге; в схему пишется `validator.ref`"
           },
           "kind": {
             "type": "string",
@@ -1126,9 +1181,16 @@
               "contracts",
               "registries",
               "hr",
-              "identity"
+              "identity",
+              "requisites",
+              "payments",
+              "persons",
+              "transport",
+              "realty",
+              "dictionaries",
+              "text"
             ],
-            "description": "Категория: `invoices` — счета и счета-фактуры, `bank` — банк и касса, `shipping` — отгрузка и перевозка, `contracts` — работы, сметы и договоры, `registries` — реестры и выписки, `hr` — кадровые документы, `identity` — удостоверения и авто. Раздела `medical` больше нет — ошибка 400"
+            "description": "Категория. Схемы: `invoices` — счета и счета-фактуры, `bank` — банк и касса, `shipping` — отгрузка и перевозка, `contracts` — работы, сметы и договоры, `registries` — реестры и выписки, `hr` — кадровые документы, `identity` — удостоверения и авто. Проверки: `requisites` — реквизиты организаций, `payments` — платежи и банки, `persons` — документы физлиц, `transport` — транспорт и логистика, `realty` — недвижимость, `dictionaries` — справочники, `text` — даты, суммы и текст. Раздела `medical` больше нет — ошибка 400"
           },
           "tags": {
             "type": "array",
@@ -1150,7 +1212,17 @@
             "items": {
               "type": "string"
             },
-            "description": "До 6 полей верхнего уровня для карточки"
+            "description": "До 6 полей верхнего уровня для карточки (у проверок пусто)"
+          },
+          "rule_preview": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Только у проверок: правило короткими «чипами»"
+          },
+          "validator": {
+            "$ref": "#/components/schemas/CatalogValidatorBrief"
           },
           "stats": {
             "type": "object",
@@ -1176,7 +1248,7 @@
               "string",
               "null"
             ],
-            "description": "Страница схемы на typizer.ru (у официальных)"
+            "description": "Страница схемы или проверки на typizer.ru (у официальных)"
           },
           "updated_at": {
             "type": "string",
@@ -1202,6 +1274,7 @@
         "required": [
           "id",
           "object",
+          "type",
           "ref",
           "kind",
           "slug",
@@ -1305,6 +1378,26 @@
         ],
         "description": "Последняя версия старшего мажора"
       },
+      "CatalogValidatorBrief": {
+        "type": "object",
+        "properties": {
+          "ref": {
+            "type": "string",
+            "example": "inn@1",
+            "description": "Что записать в `x-typizer-check` поля схемы"
+          },
+          "spec": {
+            "type": "object",
+            "additionalProperties": {},
+            "description": "Спецификация проверки (`kind: \"rules\"` — правила, `kind: \"native\"` — встроенный код официальной проверки)"
+          }
+        },
+        "required": [
+          "ref",
+          "spec"
+        ],
+        "description": "Только у проверок: ссылка для `x-typizer-check` и спецификация (для тестера)"
+      },
       "CatalogList": {
         "type": "object",
         "properties": {
@@ -1352,6 +1445,249 @@
             "minLength": 1,
             "maxLength": 120,
             "description": "Название типизатора; по умолчанию — название схемы"
+          }
+        },
+        "additionalProperties": false
+      },
+      "Validator": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "example": "val_…"
+          },
+          "object": {
+            "type": "string",
+            "enum": [
+              "validator"
+            ]
+          },
+          "ref": {
+            "type": "string",
+            "example": "my/contract-no",
+            "description": "Ссылка для `x-typizer-check`: добавьте `@1`, чтобы получать minor/patch-версии"
+          },
+          "slug": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "version": {
+            "$ref": "#/components/schemas/ValidatorVersion"
+          },
+          "versions_count": {
+            "type": "integer"
+          },
+          "catalog": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "properties": {
+              "entry_id": {
+                "type": "string",
+                "example": "cat_…"
+              },
+              "ref": {
+                "type": "string",
+                "example": "acme/contract-no",
+                "description": "Ссылка в каталоге: другие организации пишут её в `x-typizer-check` с `@1`"
+              },
+              "visibility": {
+                "type": "string",
+                "enum": [
+                  "private",
+                  "unlisted",
+                  "public"
+                ]
+              },
+              "review_state": {
+                "type": "string",
+                "enum": [
+                  "none",
+                  "pending",
+                  "approved",
+                  "rejected"
+                ]
+              },
+              "hidden": {
+                "type": "boolean"
+              },
+              "version": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "description": "Последняя опубликованная версия"
+              }
+            },
+            "required": [
+              "entry_id",
+              "ref",
+              "visibility",
+              "review_state",
+              "hidden",
+              "version"
+            ],
+            "description": "Публикация в каталоге проверок, или null"
+          },
+          "forked_from": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "properties": {
+              "ref": {
+                "type": "string"
+              },
+              "version": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "ref",
+              "version"
+            ],
+            "description": "Проверка каталога, взятая за основу, или null"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "object",
+          "ref",
+          "slug",
+          "name",
+          "description",
+          "version",
+          "versions_count",
+          "catalog",
+          "forked_from",
+          "created_at",
+          "updated_at"
+        ]
+      },
+      "ValidatorVersion": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "example": "valv_…"
+          },
+          "object": {
+            "type": "string",
+            "enum": [
+              "validator_version"
+            ]
+          },
+          "version": {
+            "type": "string",
+            "example": "1.1.0"
+          },
+          "spec": {
+            "type": "object",
+            "additionalProperties": {},
+            "description": "Спецификация проверки. `kind: \"rules\"`: `applies_to` (`string` | `number` | `integer` | `date`), `normalize` (`strip`, `case`, `lookalikes`, `trim`), `rules` — от 1 до 10 правил, проходят все по порядку (`pattern` — RE2, по умолчанию совпадение целиком; `length`, `charset`, `checksum`, `one_of`, `dictionary`, `range`, `date_range`, `prefix`, `official` — официальная проверка плюс условия), `message` — текст предупреждения (1–200 символов), `hint` — подсказка модели (до 300), `rule_messages` — свой текст для отдельных правил. Ошибка спецификации — 400 invalid_request с `param` вида `spec#/rules/2/pattern`."
+          },
+          "tests": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ValidatorTest"
+            }
+          },
+          "explain": {
+            "type": "string",
+            "description": "Что проверяется, по-русски («2 буквы, дефис, 4 цифры»)"
+          },
+          "rule_preview": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Правила короткими «чипами»"
+          },
+          "changelog": {
+            "type": "string"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "object",
+          "version",
+          "spec",
+          "tests",
+          "explain",
+          "rule_preview",
+          "changelog",
+          "created_at"
+        ]
+      },
+      "ValidatorTest": {
+        "type": "object",
+        "properties": {
+          "value": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "number"
+              }
+            ]
+          },
+          "expect": {
+            "type": "string",
+            "enum": [
+              "pass",
+              "fail"
+            ]
+          },
+          "note": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "value",
+          "expect"
+        ]
+      },
+      "CatalogForkValidatorRequest": {
+        "type": "object",
+        "properties": {
+          "version": {
+            "type": "string",
+            "maxLength": 32,
+            "example": "1",
+            "description": "Мажор (`1` — последняя 1.x) или точная версия (`1.2.0`)"
+          },
+          "slug": {
+            "type": "string",
+            "pattern": "^[a-z0-9](?:[a-z0-9-]{0,62}[a-z0-9])$",
+            "description": "Ссылка `my/<slug>`; по умолчанию — slug проверки каталога"
+          },
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 80,
+            "description": "Название; по умолчанию — название проверки каталога"
           }
         },
         "additionalProperties": false
@@ -1414,9 +1750,10 @@
               "plagiarism",
               "broken",
               "spam",
-              "other"
+              "other",
+              "false_positive"
             ],
-            "description": "`pii` — персональные данные (схема сразу скрывается до проверки), `plagiarism` — чужая схема, `broken` — не работает, `spam`, `other`. Официальные схемы: только `broken` и `other`"
+            "description": "`pii` — персональные данные (схема сразу скрывается до проверки), `plagiarism` — чужая схема, `broken` — не работает, `spam`, `other`, `false_positive` — проверка отклоняет верные значения (только у проверок). Официальные: только `broken`, `other` и (у проверок) `false_positive`"
           },
           "details": {
             "type": "string",
@@ -1447,10 +1784,18 @@
               "catalog_entry"
             ]
           },
+          "type": {
+            "type": "string",
+            "enum": [
+              "schema",
+              "validator"
+            ],
+            "description": "`schema` — схема документа (добавляется к себе как типизатор); `validator` — проверка поля (подключается ссылкой в `x-typizer-check`, без установки)"
+          },
           "ref": {
             "type": "string",
             "example": "schet-faktura",
-            "description": "Ссылка для `catalog` в `POST /v1/extract`: `slug` или `publisher/slug`; можно добавить `@1` или `@1.2.0`"
+            "description": "Ссылка для `catalog` в `POST /v1/extract`: `slug` или `publisher/slug`; можно добавить `@1` или `@1.2.0`. У проверок — адрес в каталоге; в схему пишется `validator.ref`"
           },
           "kind": {
             "type": "string",
@@ -1477,9 +1822,16 @@
               "contracts",
               "registries",
               "hr",
-              "identity"
+              "identity",
+              "requisites",
+              "payments",
+              "persons",
+              "transport",
+              "realty",
+              "dictionaries",
+              "text"
             ],
-            "description": "Категория: `invoices` — счета и счета-фактуры, `bank` — банк и касса, `shipping` — отгрузка и перевозка, `contracts` — работы, сметы и договоры, `registries` — реестры и выписки, `hr` — кадровые документы, `identity` — удостоверения и авто. Раздела `medical` больше нет — ошибка 400"
+            "description": "Категория. Схемы: `invoices` — счета и счета-фактуры, `bank` — банк и касса, `shipping` — отгрузка и перевозка, `contracts` — работы, сметы и договоры, `registries` — реестры и выписки, `hr` — кадровые документы, `identity` — удостоверения и авто. Проверки: `requisites` — реквизиты организаций, `payments` — платежи и банки, `persons` — документы физлиц, `transport` — транспорт и логистика, `realty` — недвижимость, `dictionaries` — справочники, `text` — даты, суммы и текст. Раздела `medical` больше нет — ошибка 400"
           },
           "tags": {
             "type": "array",
@@ -1501,7 +1853,17 @@
             "items": {
               "type": "string"
             },
-            "description": "До 6 полей верхнего уровня для карточки"
+            "description": "До 6 полей верхнего уровня для карточки (у проверок пусто)"
+          },
+          "rule_preview": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Только у проверок: правило короткими «чипами»"
+          },
+          "validator": {
+            "$ref": "#/components/schemas/CatalogValidatorBrief"
           },
           "stats": {
             "type": "object",
@@ -1527,7 +1889,7 @@
               "string",
               "null"
             ],
-            "description": "Страница схемы на typizer.ru (у официальных)"
+            "description": "Страница схемы или проверки на typizer.ru (у официальных)"
           },
           "updated_at": {
             "type": "string",
@@ -1653,6 +2015,56 @@
                     "version"
                   ]
                 }
+              },
+              "used_by": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "typizer_id": {
+                      "type": "string"
+                    },
+                    "name": {
+                      "type": "string"
+                    },
+                    "ref": {
+                      "type": "string"
+                    },
+                    "locked_version": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "typizer_id",
+                    "name",
+                    "ref",
+                    "locked_version"
+                  ]
+                },
+                "description": "Только у проверок: ваши типизаторы, которые её используют"
+              },
+              "forks": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    },
+                    "ref": {
+                      "type": "string"
+                    },
+                    "name": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "ref",
+                    "name"
+                  ]
+                },
+                "description": "Только у проверок: ваши проверки, сделанные на её основе"
               }
             },
             "required": [
@@ -1686,6 +2098,13 @@
                   "string",
                   "null"
                 ]
+              },
+              "source_validator_id": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "description": "Только у проверок: ваша проверка, из которой опубликована"
               }
             },
             "required": [
@@ -1704,6 +2123,7 @@
         "required": [
           "id",
           "object",
+          "type",
           "ref",
           "kind",
           "slug",
@@ -1757,6 +2177,9 @@
                   "$ref": "#/components/schemas/SchemaChange"
                 },
                 "description": "Изменения относительно прошлой версии"
+              },
+              "validator": {
+                "$ref": "#/components/schemas/CatalogValidatorVersion"
               }
             },
             "required": [
@@ -1802,6 +2225,76 @@
           "kind",
           "breaking"
         ]
+      },
+      "CatalogValidatorVersion": {
+        "type": "object",
+        "properties": {
+          "ref": {
+            "type": "string",
+            "example": "inn@1"
+          },
+          "spec": {
+            "type": "object",
+            "additionalProperties": {},
+            "description": "Спецификация проверки (`kind: \"rules\"` — правила, `kind: \"native\"` — встроенный код официальной проверки)"
+          },
+          "tests": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "value": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "number"
+                    }
+                  ]
+                },
+                "expect": {
+                  "type": "string",
+                  "enum": [
+                    "pass",
+                    "fail"
+                  ]
+                },
+                "note": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "value",
+                "expect"
+              ]
+            },
+            "description": "Примеры, которые автор опубликовал (вымышленные значения)"
+          },
+          "tests_hidden": {
+            "type": "integer",
+            "description": "Сколько ещё примеров автора проходят, но не опубликованы"
+          },
+          "explain": {
+            "type": "string",
+            "description": "Что проверяется, по-русски"
+          },
+          "rule_preview": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "ref",
+          "spec",
+          "tests",
+          "tests_hidden",
+          "explain",
+          "rule_preview"
+        ],
+        "description": "Только у проверок: правило, опубликованные примеры и объяснение"
       },
       "CatalogUpdate": {
         "type": "object",
@@ -1919,6 +2412,580 @@
         ],
         "additionalProperties": false
       },
+      "CreateValidatorRequest": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 80,
+            "example": "Номер договора"
+          },
+          "slug": {
+            "type": "string",
+            "pattern": "^[a-z0-9](?:[a-z0-9-]{0,62}[a-z0-9])$",
+            "example": "contract-no",
+            "description": "Ссылка `my/<slug>`; по умолчанию — из названия"
+          },
+          "description": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 500
+          },
+          "spec": {
+            "type": "object",
+            "additionalProperties": true,
+            "description": "Спецификация проверки. `kind: \"rules\"`: `applies_to` (`string` | `number` | `integer` | `date`), `normalize` (`strip`, `case`, `lookalikes`, `trim`), `rules` — от 1 до 10 правил, проходят все по порядку (`pattern` — RE2, по умолчанию совпадение целиком; `length`, `charset`, `checksum`, `one_of`, `dictionary`, `range`, `date_range`, `prefix`, `official` — официальная проверка плюс условия), `message` — текст предупреждения (1–200 символов), `hint` — подсказка модели (до 300), `rule_messages` — свой текст для отдельных правил. Ошибка спецификации — 400 invalid_request с `param` вида `spec#/rules/2/pattern`."
+          },
+          "tests": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ValidatorTest"
+            },
+            "description": "Примеры «должно пройти» и «не должно пройти» (до 100) — контракт версии: каждый обязан выполняться, иначе 400 invalid_request с `param: tests/<i>`. Новая minor/patch обязана проходить все тесты прежней версии; удалённый или нарушенный тест делает версию major."
+          },
+          "changelog": {
+            "type": "string",
+            "maxLength": 2000,
+            "description": "Что изменилось — для истории версий"
+          }
+        },
+        "required": [
+          "name",
+          "spec"
+        ],
+        "additionalProperties": false
+      },
+      "ValidatorTestResult": {
+        "type": "object",
+        "properties": {
+          "object": {
+            "type": "string",
+            "enum": [
+              "validator_test"
+            ]
+          },
+          "explain": {
+            "type": "string"
+          },
+          "results": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "value": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "number"
+                    }
+                  ]
+                },
+                "pass": {
+                  "type": "boolean"
+                },
+                "reason": {
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "description": "Код причины (как `reason` поля)"
+                },
+                "message": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "rule_index": {
+                  "type": [
+                    "integer",
+                    "null"
+                  ],
+                  "description": "Номер проваленного правила; -1 — значение не того типа"
+                }
+              },
+              "required": [
+                "value",
+                "pass",
+                "reason",
+                "message",
+                "rule_index"
+              ]
+            }
+          }
+        },
+        "required": [
+          "object",
+          "explain",
+          "results"
+        ]
+      },
+      "TestValidatorRequest": {
+        "type": "object",
+        "properties": {
+          "ref": {
+            "type": "string",
+            "maxLength": 200,
+            "example": "my/contract-no@1",
+            "description": "Ссылка на проверку (`inn@1`, `vin@1`, `my/<slug>@1`, `val_…`)"
+          },
+          "spec": {
+            "type": "object",
+            "additionalProperties": true,
+            "description": "Спецификация проверки. `kind: \"rules\"`: `applies_to` (`string` | `number` | `integer` | `date`), `normalize` (`strip`, `case`, `lookalikes`, `trim`), `rules` — от 1 до 10 правил, проходят все по порядку (`pattern` — RE2, по умолчанию совпадение целиком; `length`, `charset`, `checksum`, `one_of`, `dictionary`, `range`, `date_range`, `prefix`, `official` — официальная проверка плюс условия), `message` — текст предупреждения (1–200 символов), `hint` — подсказка модели (до 300), `rule_messages` — свой текст для отдельных правил. Ошибка спецификации — 400 invalid_request с `param` вида `spec#/rules/2/pattern`."
+          },
+          "values": {
+            "type": "array",
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 10000
+                },
+                {
+                  "type": "number"
+                }
+              ]
+            },
+            "minItems": 1,
+            "maxItems": 100
+          }
+        },
+        "required": [
+          "values"
+        ],
+        "additionalProperties": false
+      },
+      "ValidatorSuggestion": {
+        "type": "object",
+        "properties": {
+          "object": {
+            "type": "string",
+            "enum": [
+              "validator_suggestion"
+            ]
+          },
+          "name": {
+            "type": "string",
+            "example": "Номер договора"
+          },
+          "spec": {
+            "type": "object",
+            "additionalProperties": {},
+            "description": "Спецификация проверки. `kind: \"rules\"`: `applies_to` (`string` | `number` | `integer` | `date`), `normalize` (`strip`, `case`, `lookalikes`, `trim`), `rules` — от 1 до 10 правил, проходят все по порядку (`pattern` — RE2, по умолчанию совпадение целиком; `length`, `charset`, `checksum`, `one_of`, `dictionary`, `range`, `date_range`, `prefix`, `official` — официальная проверка плюс условия), `message` — текст предупреждения (1–200 символов), `hint` — подсказка модели (до 300), `rule_messages` — свой текст для отдельных правил. Ошибка спецификации — 400 invalid_request с `param` вида `spec#/rules/2/pattern`."
+          },
+          "tests": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "value": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "number"
+                    }
+                  ]
+                },
+                "expect": {
+                  "type": "string",
+                  "enum": [
+                    "pass",
+                    "fail"
+                  ]
+                },
+                "got": {
+                  "type": "string",
+                  "enum": [
+                    "pass",
+                    "fail"
+                  ]
+                }
+              },
+              "required": [
+                "value",
+                "expect",
+                "got"
+              ]
+            },
+            "description": "Каждый пример и что с ним делает предложенная проверка"
+          },
+          "converged": {
+            "type": "boolean",
+            "description": "Все примеры ведут себя как ожидалось; иначе — лучший вариант с красными тестами"
+          },
+          "explain": {
+            "type": "string",
+            "description": "Что проверяется, по-русски"
+          },
+          "rule_preview": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "iterations": {
+            "type": "integer",
+            "description": "Сколько раз спрашивали модель (0 — правило выведено из примеров)"
+          },
+          "source": {
+            "type": "string",
+            "enum": [
+              "catalog",
+              "shape",
+              "model"
+            ],
+            "description": "catalog — подошла готовая официальная проверка; shape — выведено из примеров без модели; model — составлено моделью"
+          },
+          "candidates_from_catalog": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "ref": {
+                  "type": "string",
+                  "example": "inn@1"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "kind": {
+                  "type": "string",
+                  "enum": [
+                    "official",
+                    "own"
+                  ]
+                },
+                "explain": {
+                  "type": "string"
+                },
+                "examples": {
+                  "type": "object",
+                  "properties": {
+                    "correct": {
+                      "type": "integer"
+                    },
+                    "total": {
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "correct",
+                    "total"
+                  ]
+                }
+              },
+              "required": [
+                "ref",
+                "name",
+                "kind",
+                "explain"
+              ]
+            },
+            "description": "Готовые проверки, которые подходят: официальные по названию поля и свои, если проходят все примеры"
+          }
+        },
+        "required": [
+          "object",
+          "name",
+          "spec",
+          "tests",
+          "converged",
+          "explain",
+          "rule_preview",
+          "iterations",
+          "source",
+          "candidates_from_catalog"
+        ]
+      },
+      "SuggestValidatorRequest": {
+        "type": "object",
+        "properties": {
+          "description": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 1000,
+            "example": "две буквы, дефис, год, косая черта и номер из четырёх цифр",
+            "description": "Какие значения верные — словами"
+          },
+          "examples": {
+            "type": "object",
+            "properties": {
+              "pass": {
+                "type": "array",
+                "items": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "maxLength": 200
+                    },
+                    {
+                      "type": "number"
+                    }
+                  ]
+                },
+                "maxItems": 50,
+                "default": []
+              },
+              "fail": {
+                "type": "array",
+                "items": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "maxLength": 200
+                    },
+                    {
+                      "type": "number"
+                    }
+                  ]
+                },
+                "maxItems": 50,
+                "default": []
+              }
+            },
+            "default": {
+              "pass": [],
+              "fail": []
+            },
+            "additionalProperties": false,
+            "example": {
+              "pass": [
+                "ДГ-2024/0153",
+                "СП-2023/0001"
+              ],
+              "fail": [
+                "ДГ-24/153"
+              ]
+            },
+            "description": "Примеры, которые должны пройти (pass) и не должны (fail), до 50 каждого"
+          },
+          "field": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string",
+                "maxLength": 200
+              },
+              "description": {
+                "type": "string",
+                "maxLength": 1000
+              },
+              "type": {
+                "type": "string",
+                "maxLength": 20,
+                "example": "string"
+              }
+            },
+            "additionalProperties": false,
+            "description": "Поле схемы, для которого нужна проверка"
+          }
+        },
+        "additionalProperties": false
+      },
+      "ValidatorDetail": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/Validator"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "versions": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/ValidatorVersion"
+                },
+                "description": "Версии, новые первыми (до 100)"
+              },
+              "used_by": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/ValidatorUsedBy"
+                }
+              }
+            },
+            "required": [
+              "versions",
+              "used_by"
+            ]
+          }
+        ]
+      },
+      "ValidatorUsedBy": {
+        "type": "object",
+        "properties": {
+          "typizer_id": {
+            "type": "string",
+            "example": "tz_…"
+          },
+          "name": {
+            "type": "string"
+          },
+          "version": {
+            "type": "integer",
+            "description": "Текущая версия типизатора"
+          },
+          "ref": {
+            "type": "string",
+            "description": "Ссылка, как она записана в схеме"
+          },
+          "locked_version": {
+            "type": "string",
+            "description": "Версия проверки, которую использует типизатор"
+          },
+          "update_available": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Новая major-версия, которую типизатор не получает сам (её нужно подключить явно), или null"
+          }
+        },
+        "required": [
+          "typizer_id",
+          "name",
+          "version",
+          "ref",
+          "locked_version",
+          "update_available"
+        ]
+      },
+      "ValidatorUpdateResult": {
+        "type": "object",
+        "properties": {
+          "object": {
+            "type": "string",
+            "enum": [
+              "validator_update"
+            ]
+          },
+          "validator": {
+            "$ref": "#/components/schemas/Validator"
+          },
+          "bump": {
+            "type": "string",
+            "enum": [
+              "major",
+              "minor",
+              "patch",
+              "none"
+            ],
+            "description": "Какую версию решила машина: major — сменился тип значения или нарушен прежний тест; minor — другие правила при зелёных прежних тестах; patch — только тексты; none — ничего не изменилось"
+          },
+          "reasons": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Почему, по-русски"
+          },
+          "propagated_to": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "typizer_id": {
+                  "type": "string"
+                },
+                "version": {
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "typizer_id",
+                "version"
+              ]
+            },
+            "description": "Типизаторы, получившие новую minor/patch-версию (новая версия типизатора)"
+          },
+          "suggested_to": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Типизаторы на прежней major: новая версия им только предлагается"
+          }
+        },
+        "required": [
+          "object",
+          "validator",
+          "bump",
+          "reasons",
+          "propagated_to",
+          "suggested_to"
+        ]
+      },
+      "UpdateValidatorRequest": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 80,
+            "example": "Номер договора"
+          },
+          "description": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 500
+          },
+          "spec": {
+            "type": "object",
+            "additionalProperties": true,
+            "description": "Спецификация проверки. `kind: \"rules\"`: `applies_to` (`string` | `number` | `integer` | `date`), `normalize` (`strip`, `case`, `lookalikes`, `trim`), `rules` — от 1 до 10 правил, проходят все по порядку (`pattern` — RE2, по умолчанию совпадение целиком; `length`, `charset`, `checksum`, `one_of`, `dictionary`, `range`, `date_range`, `prefix`, `official` — официальная проверка плюс условия), `message` — текст предупреждения (1–200 символов), `hint` — подсказка модели (до 300), `rule_messages` — свой текст для отдельных правил. Ошибка спецификации — 400 invalid_request с `param` вида `spec#/rules/2/pattern`."
+          },
+          "tests": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ValidatorTest"
+            },
+            "description": "Примеры «должно пройти» и «не должно пройти» (до 100) — контракт версии: каждый обязан выполняться, иначе 400 invalid_request с `param: tests/<i>`. Новая minor/patch обязана проходить все тесты прежней версии; удалённый или нарушенный тест делает версию major."
+          },
+          "changelog": {
+            "type": "string",
+            "maxLength": 2000,
+            "description": "Что изменилось — для истории версий"
+          }
+        },
+        "additionalProperties": false
+      },
+      "DeletedValidator": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "object": {
+            "type": "string",
+            "enum": [
+              "validator"
+            ]
+          },
+          "deleted": {
+            "type": "boolean",
+            "enum": [
+              true
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "object",
+          "deleted"
+        ]
+      },
       "Run": {
         "type": "object",
         "properties": {
@@ -2010,7 +3077,10 @@
               "object",
               "null"
             ],
-            "additionalProperties": {}
+            "additionalProperties": {
+              "$ref": "#/components/schemas/FieldResult"
+            },
+            "description": "Статус каждого поля по его пути (`seller.inn`, `items[0].amount`) — после успешного завершения"
           },
           "output_expired": {
             "type": "boolean"
@@ -2092,6 +3162,16 @@
             ],
             "description": "Схема каталога, по которой сделан прогон; иначе `null`"
           },
+          "checks_used": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "$ref": "#/components/schemas/RunCheckUsed"
+            },
+            "description": "Проверки, которые использовал прогон разовой схемы: ссылки из x-typizer-check на точных версиях и встроенные проверки (ref: inline). null у прогона типизатора: проверки его версии — в checks типизатора. Ответы API содержат поле всегда; в вебхуках, отправленных до его появления, его нет"
+          },
           "created_at": {
             "type": "string",
             "format": "date-time"
@@ -2124,6 +3204,187 @@
           "catalog",
           "created_at",
           "completed_at"
+        ]
+      },
+      "FieldResult": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "description": "`ok` — значение есть и проверки прошли, `warn` — значение есть, но его стоит проверить, `missing` — значения нет в документе. Набор открыт: незнакомое значение не ошибка, сохраняйте его как строку.",
+            "x-enum-hint": [
+              "ok",
+              "warn",
+              "missing"
+            ],
+            "example": "ok"
+          },
+          "reason": {
+            "type": "string",
+            "description": "Только при `warn`: код первой причины по приоритету. Набор открыт: новые значения могут появиться без смены версии API, обрабатывайте неизвестные как «проверьте значение». Сейчас: `checksum_mismatch`, `invalid_format`, `pattern_mismatch`, `not_in_list`, `out_of_range`, `sum_mismatch`, `rule_failed`, `implausible_date`, `no_source`, `code_mismatch`",
+            "x-enum-hint": [
+              "checksum_mismatch",
+              "invalid_format",
+              "pattern_mismatch",
+              "not_in_list",
+              "out_of_range",
+              "sum_mismatch",
+              "rule_failed",
+              "implausible_date",
+              "no_source",
+              "code_mismatch"
+            ],
+            "example": "checksum_mismatch"
+          },
+          "message": {
+            "type": "string",
+            "description": "Только при `warn`: та же причина готовой фразой по-русски — её и показывайте пользователю",
+            "example": "Не сходится контрольное число ИНН"
+          },
+          "checks": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FieldCheck"
+            },
+            "description": "Все проверки, которые относятся к полю: встроенные проверки реквизитов и правила документа. Нет, если ни одна не относится"
+          },
+          "sources": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FieldSource"
+            }
+          }
+        },
+        "required": [
+          "status",
+          "sources"
+        ],
+        "description": "Статус одного поля результата. Ключ в `fields` — путь к полю: `seller.inn`, `items[0].amount`"
+      },
+      "FieldCheck": {
+        "type": "object",
+        "properties": {
+          "ref": {
+            "type": "string",
+            "description": "Какая проверка: встроенная (`inn`, `kpp`, `ogrn`, `bik`, `account`, `snils`, `korr-account`) или правило документа (`doc:sum_of`)",
+            "example": "inn"
+          },
+          "version": {
+            "type": "string",
+            "description": "Версия проверки",
+            "example": "1.0.0"
+          },
+          "name": {
+            "type": "string",
+            "description": "Название по-русски",
+            "example": "ИНН"
+          },
+          "status": {
+            "type": "string",
+            "description": "`pass` — прошла, `fail` — не прошла, `skipped` — не запускалась (например, у суммы позиций есть пустое слагаемое). Набор открыт: незнакомое значение не ошибка, сохраняйте его как строку.",
+            "x-enum-hint": [
+              "pass",
+              "fail",
+              "skipped"
+            ],
+            "example": "pass"
+          },
+          "rule": {
+            "type": "string",
+            "description": "Что решило исход: `checksum` (контрольное число), `format` (формат) и т. п."
+          },
+          "reason": {
+            "type": "string",
+            "description": "Только при `fail`: код причины. Набор открыт: новые значения могут появиться без смены версии API, обрабатывайте неизвестные как «проверьте значение». Сейчас: `checksum_mismatch`, `invalid_format`, `pattern_mismatch`, `not_in_list`, `out_of_range`, `sum_mismatch`, `rule_failed`, `implausible_date`, `no_source`, `code_mismatch`",
+            "x-enum-hint": [
+              "checksum_mismatch",
+              "invalid_format",
+              "pattern_mismatch",
+              "not_in_list",
+              "out_of_range",
+              "sum_mismatch",
+              "rule_failed",
+              "implausible_date",
+              "no_source",
+              "code_mismatch"
+            ]
+          },
+          "corrected": {
+            "type": "boolean",
+            "enum": [
+              true
+            ],
+            "description": "Только при `pass`: проверка не прошла с первого раза, поле прочитано ещё раз из того же места документа («Перечитать при ошибке», режим `precise` и `x-typizer-reextract: true` в схеме), и новое значение её прошло"
+          }
+        },
+        "required": [
+          "ref",
+          "status"
+        ],
+        "description": "Исход одной проверки поля"
+      },
+      "FieldSource": {
+        "type": "object",
+        "properties": {
+          "page": {
+            "type": "integer",
+            "description": "Номер страницы, с 1"
+          },
+          "bbox": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "type": "number"
+            },
+            "description": "Рамка `[x0, y0, x1, y1]` в долях страницы (0–1, начало — левый верхний угол); `null`, если место на странице неизвестно"
+          },
+          "text": {
+            "type": "string",
+            "description": "Текст документа, из которого взято значение"
+          }
+        },
+        "required": [
+          "page",
+          "bbox",
+          "text"
+        ],
+        "description": "Место в документе, откуда взято значение поля"
+      },
+      "RunCheckUsed": {
+        "type": "object",
+        "properties": {
+          "ref": {
+            "type": "string",
+            "example": "my/contract-no",
+            "description": "Ссылка без версии; inline — встроенная проверка из самой схемы"
+          },
+          "version": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "example": "1.1.0",
+            "description": "null у inline"
+          },
+          "name": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "null у inline"
+          },
+          "field": {
+            "type": "string",
+            "example": "contract_no",
+            "description": "Только у inline: путь поля со встроенной проверкой"
+          }
+        },
+        "required": [
+          "ref",
+          "version",
+          "name"
         ]
       },
       "CreateRunRequest": {
@@ -2293,7 +3554,7 @@
           "schema": {
             "type": "object",
             "additionalProperties": true,
-            "description": "Подмножество JSON Schema (draft 2020-12) с корнем `object`: не больше 200 полей и 10 уровней схемы (core), 131072 байт (128 КиБ) в компактном JSON в UTF-8, 64 уровней вложенности JSON (включая `examples`), и ни в одной строке нет NUL или непарного суррогата. Имена полей — буквы, десятичные цифры, `_` и `-`, начинаются с буквы или `_` (они становятся именами элементов XML). Порядок `properties` сохраняется: по нему идут столбцы результата, элементы XML и XSD."
+            "description": "Подмножество JSON Schema (draft 2020-12) с корнем `object`: не больше 200 полей и 10 уровней схемы (core), 131072 байт (128 КиБ) в компактном JSON в UTF-8, 64 уровней вложенности JSON (включая `examples`), и ни в одной строке нет NUL или непарного суррогата. Имена полей — буквы, десятичные цифры, `_` и `-`, начинаются с буквы или `_` (они становятся именами элементов XML). Порядок `properties` сохраняется: по нему идут столбцы результата, элементы XML и XSD. `x-typizer-check` поля — встроенная проверка (`inn`, `snils`…), ссылка на проверку (`vin@1`, `my/contract-no@1`) или сама проверка объектом прямо в схеме (`kind: \"rules\"`, `applies_to`, `rules`, `message`, необязательные `hint` и `tests`; до 8 КиБ) — отдельный вызов /v1/validators для неё не нужен."
           },
           "catalog": {
             "type": "string",
@@ -7327,9 +8588,23 @@
         "tags": [
           "Catalog"
         ],
-        "summary": "Каталог готовых схем",
-        "description": "Официальные схемы Typizer и опубликованные организациями (когда они доступны вашей организации). Схемы «по ссылке» в список не попадают. Порядок может немного сдвинуться между страницами при пересчёте популярности (раз в час).\n\nДоступ: ключ API со скоупом typizers:read или сессия.",
+        "summary": "Каталог готовых схем и проверок",
+        "description": "Официальные схемы Typizer и опубликованные организациями (когда они доступны вашей организации). С type=validator — каталог проверок полей (ИНН, СНИЛС, IBAN, VIN…): у каждой есть validator.ref для x-typizer-check. Записи «по ссылке» в список не попадают. Порядок может немного сдвинуться между страницами при пересчёте популярности (раз в час).\n\nДоступ: ключ API со скоупом typizers:read или сессия.",
         "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "schema",
+                "validator"
+              ],
+              "description": "`schema` (по умолчанию) или `validator` — проверки. Нужен для slug: у схемы и проверки он может совпадать (`snils`); идентификатор `cat_…` находится и без него"
+            },
+            "required": false,
+            "description": "`schema` (по умолчанию) или `validator` — проверки. Нужен для slug: у схемы и проверки он может совпадать (`snils`); идентификатор `cat_…` находится и без него",
+            "name": "type",
+            "in": "query"
+          },
           {
             "schema": {
               "type": "string",
@@ -7351,12 +8626,19 @@
                 "contracts",
                 "registries",
                 "hr",
-                "identity"
+                "identity",
+                "requisites",
+                "payments",
+                "persons",
+                "transport",
+                "realty",
+                "dictionaries",
+                "text"
               ],
-              "description": "Категория: `invoices` — счета и счета-фактуры, `bank` — банк и касса, `shipping` — отгрузка и перевозка, `contracts` — работы, сметы и договоры, `registries` — реестры и выписки, `hr` — кадровые документы, `identity` — удостоверения и авто. Раздела `medical` больше нет — ошибка 400"
+              "description": "Раздел того же типа, что `type`"
             },
             "required": false,
-            "description": "Категория: `invoices` — счета и счета-фактуры, `bank` — банк и касса, `shipping` — отгрузка и перевозка, `contracts` — работы, сметы и договоры, `registries` — реестры и выписки, `hr` — кадровые документы, `identity` — удостоверения и авто. Раздела `medical` больше нет — ошибка 400",
+            "description": "Раздел того же типа, что `type`",
             "name": "category",
             "in": "query"
           },
@@ -7985,8 +9267,8 @@
         "tags": [
           "Catalog"
         ],
-        "summary": "Создать типизатор на основе схемы",
-        "description": "Всегда создаёт новый типизатор — вашу копию схемы, которую можно менять. Новые версии источника предлагаются в catalog_source.update. Поддерживает Idempotency-Key.\n\nДоступ: ключ API со скоупом typizers:write или сессия.",
+        "summary": "Создать типизатор или проверку на основе записи каталога",
+        "description": "Схема: всегда создаёт новый типизатор — вашу копию схемы, которую можно менять. Новые версии источника предлагаются в catalog_source.update. С type=validator создаёт вашу проверку my/<slug> с правилом и опубликованными примерами (тело — CatalogForkValidatorRequest; занятый slug — 409 с param: slug), ответ — Validator. Поддерживает Idempotency-Key.\n\nДоступ: ключ API со скоупом typizers:write или сессия.",
         "parameters": [
           {
             "schema": {
@@ -8001,6 +9283,20 @@
             "in": "path"
           },
           {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "schema",
+                "validator"
+              ],
+              "description": "`schema` (по умолчанию) или `validator` — проверки. Нужен для slug: у схемы и проверки он может совпадать (`snils`); идентификатор `cat_…` находится и без него"
+            },
+            "required": false,
+            "description": "`schema` (по умолчанию) или `validator` — проверки. Нужен для slug: у схемы и проверки он может совпадать (`snils`); идентификатор `cat_…` находится и без него",
+            "name": "type",
+            "in": "query"
+          },
+          {
             "$ref": "#/components/parameters/TypizerOrganization"
           },
           {
@@ -8012,7 +9308,14 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/CatalogInstallRequest"
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/CatalogInstallRequest"
+                  },
+                  {
+                    "$ref": "#/components/schemas/CatalogForkValidatorRequest"
+                  }
+                ]
               }
             }
           }
@@ -8023,7 +9326,14 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Typizer"
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/Typizer"
+                    },
+                    {
+                      "$ref": "#/components/schemas/Validator"
+                    }
+                  ]
                 }
               }
             },
@@ -8303,6 +9613,20 @@
             "in": "path"
           },
           {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "schema",
+                "validator"
+              ],
+              "description": "`schema` (по умолчанию) или `validator` — проверки. Нужен для slug: у схемы и проверки он может совпадать (`snils`); идентификатор `cat_…` находится и без него"
+            },
+            "required": false,
+            "description": "`schema` (по умолчанию) или `validator` — проверки. Нужен для slug: у схемы и проверки он может совпадать (`snils`); идентификатор `cat_…` находится и без него",
+            "name": "type",
+            "in": "query"
+          },
+          {
             "$ref": "#/components/parameters/TypizerOrganization"
           }
         ],
@@ -8533,6 +9857,20 @@
             "in": "path"
           },
           {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "schema",
+                "validator"
+              ],
+              "description": "`schema` (по умолчанию) или `validator` — проверки. Нужен для slug: у схемы и проверки он может совпадать (`snils`); идентификатор `cat_…` находится и без него"
+            },
+            "required": false,
+            "description": "`schema` (по умолчанию) или `validator` — проверки. Нужен для slug: у схемы и проверки он может совпадать (`snils`); идентификатор `cat_…` находится и без него",
+            "name": "type",
+            "in": "query"
+          },
+          {
             "$ref": "#/components/parameters/TypizerOrganization"
           }
         ],
@@ -8749,7 +10087,7 @@
         "tags": [
           "Catalog"
         ],
-        "summary": "Версии схемы, новые первыми",
+        "summary": "Версии схемы или проверки, новые первыми",
         "parameters": [
           {
             "schema": {
@@ -8762,6 +10100,20 @@
             "description": "Идентификатор `cat_…` или slug официальной схемы",
             "name": "entry",
             "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "schema",
+                "validator"
+              ],
+              "description": "`schema` (по умолчанию) или `validator` — проверки. Нужен для slug: у схемы и проверки он может совпадать (`snils`); идентификатор `cat_…` находится и без него"
+            },
+            "required": false,
+            "description": "`schema` (по умолчанию) или `validator` — проверки. Нужен для slug: у схемы и проверки он может совпадать (`snils`); идентификатор `cat_…` находится и без него",
+            "name": "type",
+            "in": "query"
           },
           {
             "$ref": "#/components/parameters/TypizerOrganization"
@@ -9024,6 +10376,20 @@
             "description": "Идентификатор `cat_…` или slug официальной схемы",
             "name": "entry",
             "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "schema",
+                "validator"
+              ],
+              "description": "`schema` (по умолчанию) или `validator` — проверки. Нужен для slug: у схемы и проверки он может совпадать (`snils`); идентификатор `cat_…` находится и без него"
+            },
+            "required": false,
+            "description": "`schema` (по умолчанию) или `validator` — проверки. Нужен для slug: у схемы и проверки он может совпадать (`snils`); идентификатор `cat_…` находится и без него",
+            "name": "type",
+            "in": "query"
           },
           {
             "$ref": "#/components/parameters/TypizerOrganization"
@@ -9312,7 +10678,7 @@
         "tags": [
           "Catalog"
         ],
-        "summary": "Схема каталога",
+        "summary": "Схема или проверка каталога",
         "parameters": [
           {
             "schema": {
@@ -9336,6 +10702,20 @@
             "required": false,
             "description": "Мажор (`1` — последняя 1.x) или точная версия (`1.2.0`)",
             "name": "version",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "schema",
+                "validator"
+              ],
+              "description": "`schema` (по умолчанию) или `validator` — проверки. Нужен для slug: у схемы и проверки он может совпадать (`snils`); идентификатор `cat_…` находится и без него"
+            },
+            "required": false,
+            "description": "`schema` (по умолчанию) или `validator` — проверки. Нужен для slug: у схемы и проверки он может совпадать (`snils`); идентификатор `cat_…` находится и без него",
+            "name": "type",
             "in": "query"
           },
           {
@@ -9616,6 +10996,20 @@
             "required": false,
             "description": "Мажор (`1` — последняя 1.x) или точная версия (`1.2.0`)",
             "name": "version",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "schema",
+                "validator"
+              ],
+              "description": "`schema` (по умолчанию) или `validator` — проверки. Нужен для slug: у схемы и проверки он может совпадать (`snils`); идентификатор `cat_…` находится и без него"
+            },
+            "required": false,
+            "description": "`schema` (по умолчанию) или `validator` — проверки. Нужен для slug: у схемы и проверки он может совпадать (`snils`); идентификатор `cat_…` находится и без него",
+            "name": "type",
             "in": "query"
           },
           {
@@ -10325,6 +11719,2097 @@
           },
           "409": {
             "description": "`conflict`: Конфликт состояния; `idempotency_conflict`: Конфликт идемпотентности",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              },
+              "Typizer-Maintenance": {
+                "$ref": "#/components/headers/TypizerMaintenance"
+              },
+              "RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              }
+            }
+          },
+          "429": {
+            "description": "`rate_limited`: Превышен лимит запросов",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              },
+              "Typizer-Maintenance": {
+                "$ref": "#/components/headers/TypizerMaintenance"
+              },
+              "RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              },
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              }
+            }
+          },
+          "500": {
+            "description": "`internal_error`: Внутренняя ошибка",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              },
+              "Typizer-Maintenance": {
+                "$ref": "#/components/headers/TypizerMaintenance"
+              },
+              "RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              }
+            }
+          },
+          "503": {
+            "description": "`upstream_unavailable`: Сервис обработки временно недоступен",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              },
+              "Typizer-Maintenance": {
+                "$ref": "#/components/headers/TypizerMaintenance"
+              },
+              "RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              },
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "sessionCookie": []
+          }
+        ]
+      }
+    },
+    "/v1/validators": {
+      "get": {
+        "operationId": "listValidators",
+        "tags": [
+          "Validators"
+        ],
+        "summary": "Свои проверки организации, новые первыми",
+        "parameters": [
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20,
+              "description": "Элементов на странице, 1–100",
+              "example": 20
+            },
+            "required": false,
+            "description": "Элементов на странице, 1–100",
+            "name": "limit",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "description": "`next_cursor` предыдущей страницы: список продолжается после этого идентификатора"
+            },
+            "required": false,
+            "description": "`next_cursor` предыдущей страницы: список продолжается после этого идентификатора",
+            "name": "starting_after",
+            "in": "query"
+          },
+          {
+            "$ref": "#/components/parameters/TypizerOrganization"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Страница проверок",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "object": {
+                      "type": "string",
+                      "enum": [
+                        "list"
+                      ]
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Validator"
+                      }
+                    },
+                    "has_more": {
+                      "type": "boolean"
+                    },
+                    "next_cursor": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "object",
+                    "data",
+                    "has_more",
+                    "next_cursor"
+                  ]
+                }
+              }
+            },
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              },
+              "Typizer-Maintenance": {
+                "$ref": "#/components/headers/TypizerMaintenance"
+              },
+              "RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              }
+            }
+          },
+          "400": {
+            "description": "`invalid_request`: Некорректный запрос; `invalid_id`: Некорректный идентификатор",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              },
+              "Typizer-Maintenance": {
+                "$ref": "#/components/headers/TypizerMaintenance"
+              },
+              "RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              }
+            }
+          },
+          "401": {
+            "description": "`unauthorized`: Не авторизовано",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              },
+              "Typizer-Maintenance": {
+                "$ref": "#/components/headers/TypizerMaintenance"
+              },
+              "RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              }
+            }
+          },
+          "403": {
+            "description": "`insufficient_scope`: Недостаточно прав ключа; `forbidden`: Доступ запрещён",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              },
+              "Typizer-Maintenance": {
+                "$ref": "#/components/headers/TypizerMaintenance"
+              },
+              "RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              }
+            }
+          },
+          "429": {
+            "description": "`rate_limited`: Превышен лимит запросов",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              },
+              "Typizer-Maintenance": {
+                "$ref": "#/components/headers/TypizerMaintenance"
+              },
+              "RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              },
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              }
+            }
+          },
+          "500": {
+            "description": "`internal_error`: Внутренняя ошибка",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              },
+              "Typizer-Maintenance": {
+                "$ref": "#/components/headers/TypizerMaintenance"
+              },
+              "RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              }
+            }
+          },
+          "503": {
+            "description": "`upstream_unavailable`: Сервис обработки временно недоступен",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              },
+              "Typizer-Maintenance": {
+                "$ref": "#/components/headers/TypizerMaintenance"
+              },
+              "RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              },
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "sessionCookie": []
+          }
+        ],
+        "description": "Доступ: ключ API со скоупом typizers:read или сессия."
+      },
+      "post": {
+        "operationId": "createValidator",
+        "tags": [
+          "Validators"
+        ],
+        "summary": "Создать проверку (версия 1.0.0)",
+        "description": "Подключается к полю схемы ссылкой в x-typizer-check: my/<slug>@1. До 500 проверок в организации. Занятый slug (в том числе у архивной проверки) — 409 conflict с param: slug. Поддерживает Idempotency-Key.\n\nДоступ: ключ API со скоупом typizers:write или сессия.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateValidatorRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Создана",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Validator"
+                }
+              }
+            },
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              },
+              "Typizer-Maintenance": {
+                "$ref": "#/components/headers/TypizerMaintenance"
+              },
+              "RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              },
+              "Idempotent-Replayed": {
+                "$ref": "#/components/headers/IdempotentReplayed"
+              }
+            }
+          },
+          "400": {
+            "description": "`invalid_request`: Некорректный запрос",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              },
+              "Typizer-Maintenance": {
+                "$ref": "#/components/headers/TypizerMaintenance"
+              },
+              "RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              }
+            }
+          },
+          "401": {
+            "description": "`unauthorized`: Не авторизовано",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              },
+              "Typizer-Maintenance": {
+                "$ref": "#/components/headers/TypizerMaintenance"
+              },
+              "RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              }
+            }
+          },
+          "403": {
+            "description": "`insufficient_scope`: Недостаточно прав ключа; `forbidden`: Доступ запрещён",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              },
+              "Typizer-Maintenance": {
+                "$ref": "#/components/headers/TypizerMaintenance"
+              },
+              "RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              }
+            }
+          },
+          "409": {
+            "description": "`conflict`: Конфликт состояния; `idempotency_conflict`: Конфликт идемпотентности",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              },
+              "Typizer-Maintenance": {
+                "$ref": "#/components/headers/TypizerMaintenance"
+              },
+              "RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              }
+            }
+          },
+          "429": {
+            "description": "`rate_limited`: Превышен лимит запросов",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              },
+              "Typizer-Maintenance": {
+                "$ref": "#/components/headers/TypizerMaintenance"
+              },
+              "RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              },
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              }
+            }
+          },
+          "500": {
+            "description": "`internal_error`: Внутренняя ошибка",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              },
+              "Typizer-Maintenance": {
+                "$ref": "#/components/headers/TypizerMaintenance"
+              },
+              "RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              }
+            }
+          },
+          "503": {
+            "description": "`upstream_unavailable`: Сервис обработки временно недоступен",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              },
+              "Typizer-Maintenance": {
+                "$ref": "#/components/headers/TypizerMaintenance"
+              },
+              "RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              },
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "sessionCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/TypizerOrganization"
+          },
+          {
+            "$ref": "#/components/parameters/IdempotencyKey"
+          }
+        ]
+      }
+    },
+    "/v1/validators/test": {
+      "post": {
+        "operationId": "testValidator",
+        "tags": [
+          "Validators"
+        ],
+        "summary": "Проверить значения проверкой (без сохранения)",
+        "description": "Передайте ref (сохранённая или официальная проверка) или spec (черновик) и до 100 значений. Ничего не сохраняется, страницы не списываются.\n\nДоступ: ключ API со скоупом typizers:read или сессия.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TestValidatorRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Результат по каждому значению",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidatorTestResult"
+                }
+              }
+            },
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              },
+              "Typizer-Maintenance": {
+                "$ref": "#/components/headers/TypizerMaintenance"
+              },
+              "RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              },
+              "Idempotent-Replayed": {
+                "$ref": "#/components/headers/IdempotentReplayed"
+              }
+            }
+          },
+          "400": {
+            "description": "`invalid_request`: Некорректный запрос",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              },
+              "Typizer-Maintenance": {
+                "$ref": "#/components/headers/TypizerMaintenance"
+              },
+              "RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              }
+            }
+          },
+          "401": {
+            "description": "`unauthorized`: Не авторизовано",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              },
+              "Typizer-Maintenance": {
+                "$ref": "#/components/headers/TypizerMaintenance"
+              },
+              "RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              }
+            }
+          },
+          "403": {
+            "description": "`insufficient_scope`: Недостаточно прав ключа; `forbidden`: Доступ запрещён",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              },
+              "Typizer-Maintenance": {
+                "$ref": "#/components/headers/TypizerMaintenance"
+              },
+              "RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              }
+            }
+          },
+          "409": {
+            "description": "`idempotency_conflict`: Конфликт идемпотентности",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              },
+              "Typizer-Maintenance": {
+                "$ref": "#/components/headers/TypizerMaintenance"
+              },
+              "RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              }
+            }
+          },
+          "429": {
+            "description": "`rate_limited`: Превышен лимит запросов",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              },
+              "Typizer-Maintenance": {
+                "$ref": "#/components/headers/TypizerMaintenance"
+              },
+              "RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              },
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              }
+            }
+          },
+          "500": {
+            "description": "`internal_error`: Внутренняя ошибка",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              },
+              "Typizer-Maintenance": {
+                "$ref": "#/components/headers/TypizerMaintenance"
+              },
+              "RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              }
+            }
+          },
+          "503": {
+            "description": "`upstream_unavailable`: Сервис обработки временно недоступен",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              },
+              "Typizer-Maintenance": {
+                "$ref": "#/components/headers/TypizerMaintenance"
+              },
+              "RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              },
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "sessionCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/TypizerOrganization"
+          },
+          {
+            "$ref": "#/components/parameters/IdempotencyKey"
+          }
+        ]
+      }
+    },
+    "/v1/validators/suggest": {
+      "post": {
+        "operationId": "suggestValidator",
+        "tags": [
+          "Validators"
+        ],
+        "summary": "Предложить проверку по описанию и примерам (без сохранения)",
+        "description": "Сначала ищутся готовые проверки (candidates_from_catalog); без описания подходящая под все примеры официальная проверка сразу становится ответом (source: catalog). Без описания правило по возможности выводится из примеров сразу (source: shape) — без модели и без расхода лимита. Иначе проверку составляет модель и прогоняет на ваших примерах до 3 раз; если все примеры так и не сошлись, возвращается лучший вариант с converged: false. Вызов модели расходует одну единицу дневной квоты ассистента, как генерация схемы (сверх неё — 429 с Retry-After). Ничего не сохраняется: сохраните проверку через POST /v1/validators.\n\nДоступ: ключ API со скоупом typizers:write или сессия.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SuggestValidatorRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Предложенная проверка",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidatorSuggestion"
+                }
+              }
+            },
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              },
+              "Typizer-Maintenance": {
+                "$ref": "#/components/headers/TypizerMaintenance"
+              },
+              "RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              }
+            }
+          },
+          "400": {
+            "description": "`invalid_request`: Некорректный запрос",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              },
+              "Typizer-Maintenance": {
+                "$ref": "#/components/headers/TypizerMaintenance"
+              },
+              "RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              }
+            }
+          },
+          "401": {
+            "description": "`unauthorized`: Не авторизовано",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              },
+              "Typizer-Maintenance": {
+                "$ref": "#/components/headers/TypizerMaintenance"
+              },
+              "RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              }
+            }
+          },
+          "403": {
+            "description": "`insufficient_scope`: Недостаточно прав ключа; `forbidden`: Доступ запрещён",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              },
+              "Typizer-Maintenance": {
+                "$ref": "#/components/headers/TypizerMaintenance"
+              },
+              "RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              }
+            }
+          },
+          "422": {
+            "description": "`extraction_failed`: Извлечение не удалось",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              },
+              "Typizer-Maintenance": {
+                "$ref": "#/components/headers/TypizerMaintenance"
+              },
+              "RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              }
+            }
+          },
+          "429": {
+            "description": "`rate_limited`: Превышен лимит запросов",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              },
+              "Typizer-Maintenance": {
+                "$ref": "#/components/headers/TypizerMaintenance"
+              },
+              "RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              },
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              }
+            }
+          },
+          "500": {
+            "description": "`internal_error`: Внутренняя ошибка",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              },
+              "Typizer-Maintenance": {
+                "$ref": "#/components/headers/TypizerMaintenance"
+              },
+              "RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              }
+            }
+          },
+          "503": {
+            "description": "`upstream_unavailable`: Сервис обработки временно недоступен",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              },
+              "Typizer-Maintenance": {
+                "$ref": "#/components/headers/TypizerMaintenance"
+              },
+              "RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              },
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "sessionCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/TypizerOrganization"
+          },
+          {
+            "$ref": "#/components/parameters/IdempotencyKeyIgnored"
+          }
+        ]
+      }
+    },
+    "/v1/validators/my/{slug}": {
+      "get": {
+        "operationId": "getValidatorBySlug",
+        "tags": [
+          "Validators"
+        ],
+        "summary": "Получить свою проверку по ссылке my/<slug>",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "maxLength": 64,
+              "example": "contract-no"
+            },
+            "required": true,
+            "name": "slug",
+            "in": "path"
+          },
+          {
+            "$ref": "#/components/parameters/TypizerOrganization"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Проверка с версиями и типизаторами",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidatorDetail"
+                }
+              }
+            },
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              },
+              "Typizer-Maintenance": {
+                "$ref": "#/components/headers/TypizerMaintenance"
+              },
+              "RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              }
+            }
+          },
+          "401": {
+            "description": "`unauthorized`: Не авторизовано",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              },
+              "Typizer-Maintenance": {
+                "$ref": "#/components/headers/TypizerMaintenance"
+              },
+              "RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              }
+            }
+          },
+          "403": {
+            "description": "`insufficient_scope`: Недостаточно прав ключа; `forbidden`: Доступ запрещён",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              },
+              "Typizer-Maintenance": {
+                "$ref": "#/components/headers/TypizerMaintenance"
+              },
+              "RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              }
+            }
+          },
+          "404": {
+            "description": "`not_found`: Не найдено",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              },
+              "Typizer-Maintenance": {
+                "$ref": "#/components/headers/TypizerMaintenance"
+              },
+              "RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              }
+            }
+          },
+          "429": {
+            "description": "`rate_limited`: Превышен лимит запросов",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              },
+              "Typizer-Maintenance": {
+                "$ref": "#/components/headers/TypizerMaintenance"
+              },
+              "RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              },
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              }
+            }
+          },
+          "500": {
+            "description": "`internal_error`: Внутренняя ошибка",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              },
+              "Typizer-Maintenance": {
+                "$ref": "#/components/headers/TypizerMaintenance"
+              },
+              "RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              }
+            }
+          },
+          "503": {
+            "description": "`upstream_unavailable`: Сервис обработки временно недоступен",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              },
+              "Typizer-Maintenance": {
+                "$ref": "#/components/headers/TypizerMaintenance"
+              },
+              "RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              },
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "sessionCookie": []
+          }
+        ],
+        "description": "Доступ: ключ API со скоупом typizers:read или сессия."
+      }
+    },
+    "/v1/validators/{id}": {
+      "get": {
+        "operationId": "getValidator",
+        "tags": [
+          "Validators"
+        ],
+        "summary": "Получить проверку с версиями и типизаторами, которые её используют",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "maxLength": 64,
+              "example": "val_…"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          },
+          {
+            "$ref": "#/components/parameters/TypizerOrganization"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Проверка",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidatorDetail"
+                }
+              }
+            },
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              },
+              "Typizer-Maintenance": {
+                "$ref": "#/components/headers/TypizerMaintenance"
+              },
+              "RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              }
+            }
+          },
+          "400": {
+            "description": "`invalid_id`: Некорректный идентификатор",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              },
+              "Typizer-Maintenance": {
+                "$ref": "#/components/headers/TypizerMaintenance"
+              },
+              "RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              }
+            }
+          },
+          "401": {
+            "description": "`unauthorized`: Не авторизовано",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              },
+              "Typizer-Maintenance": {
+                "$ref": "#/components/headers/TypizerMaintenance"
+              },
+              "RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              }
+            }
+          },
+          "403": {
+            "description": "`insufficient_scope`: Недостаточно прав ключа; `forbidden`: Доступ запрещён",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              },
+              "Typizer-Maintenance": {
+                "$ref": "#/components/headers/TypizerMaintenance"
+              },
+              "RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              }
+            }
+          },
+          "404": {
+            "description": "`not_found`: Не найдено",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              },
+              "Typizer-Maintenance": {
+                "$ref": "#/components/headers/TypizerMaintenance"
+              },
+              "RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              }
+            }
+          },
+          "429": {
+            "description": "`rate_limited`: Превышен лимит запросов",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              },
+              "Typizer-Maintenance": {
+                "$ref": "#/components/headers/TypizerMaintenance"
+              },
+              "RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              },
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              }
+            }
+          },
+          "500": {
+            "description": "`internal_error`: Внутренняя ошибка",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              },
+              "Typizer-Maintenance": {
+                "$ref": "#/components/headers/TypizerMaintenance"
+              },
+              "RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              }
+            }
+          },
+          "503": {
+            "description": "`upstream_unavailable`: Сервис обработки временно недоступен",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              },
+              "Typizer-Maintenance": {
+                "$ref": "#/components/headers/TypizerMaintenance"
+              },
+              "RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              },
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "sessionCookie": []
+          }
+        ],
+        "description": "Доступ: ключ API со скоупом typizers:read или сессия."
+      },
+      "patch": {
+        "operationId": "updateValidator",
+        "tags": [
+          "Validators"
+        ],
+        "summary": "Изменить проверку (новая версия)",
+        "description": "Версии неизменяемы: изменение создаёт новую версию, semver решает машина (bump). Новая minor/patch сразу получают типизаторы, которые ссылаются на проверку без точной версии (my/x или my/x@1): у них появляется новая версия (propagated_to). Точная ссылка my/x@1.2.0 остаётся на своей версии. Новую major типизаторы не получают сами (suggested_to).\n\nДоступ: ключ API со скоупом typizers:write или сессия.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "maxLength": 64,
+              "example": "val_…"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          },
+          {
+            "$ref": "#/components/parameters/TypizerOrganization"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateValidatorRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Результат",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidatorUpdateResult"
+                }
+              }
+            },
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              },
+              "Typizer-Maintenance": {
+                "$ref": "#/components/headers/TypizerMaintenance"
+              },
+              "RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              }
+            }
+          },
+          "400": {
+            "description": "`invalid_request`: Некорректный запрос; `invalid_id`: Некорректный идентификатор",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              },
+              "Typizer-Maintenance": {
+                "$ref": "#/components/headers/TypizerMaintenance"
+              },
+              "RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              }
+            }
+          },
+          "401": {
+            "description": "`unauthorized`: Не авторизовано",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              },
+              "Typizer-Maintenance": {
+                "$ref": "#/components/headers/TypizerMaintenance"
+              },
+              "RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              }
+            }
+          },
+          "403": {
+            "description": "`insufficient_scope`: Недостаточно прав ключа; `forbidden`: Доступ запрещён",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              },
+              "Typizer-Maintenance": {
+                "$ref": "#/components/headers/TypizerMaintenance"
+              },
+              "RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              }
+            }
+          },
+          "404": {
+            "description": "`not_found`: Не найдено",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              },
+              "Typizer-Maintenance": {
+                "$ref": "#/components/headers/TypizerMaintenance"
+              },
+              "RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              }
+            }
+          },
+          "429": {
+            "description": "`rate_limited`: Превышен лимит запросов",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              },
+              "Typizer-Maintenance": {
+                "$ref": "#/components/headers/TypizerMaintenance"
+              },
+              "RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              },
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              }
+            }
+          },
+          "500": {
+            "description": "`internal_error`: Внутренняя ошибка",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              },
+              "Typizer-Maintenance": {
+                "$ref": "#/components/headers/TypizerMaintenance"
+              },
+              "RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              }
+            }
+          },
+          "503": {
+            "description": "`upstream_unavailable`: Сервис обработки временно недоступен",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              },
+              "Typizer-Maintenance": {
+                "$ref": "#/components/headers/TypizerMaintenance"
+              },
+              "RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              },
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "sessionCookie": []
+          }
+        ]
+      },
+      "delete": {
+        "operationId": "deleteValidator",
+        "tags": [
+          "Validators"
+        ],
+        "summary": "Архивировать проверку",
+        "description": "Пока проверку использует хотя бы один типизатор — 409 conflict с param: used_by. Версии сохраняются для прогонов, которые их использовали.\n\nДоступ: ключ API со скоупом typizers:write или сессия.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "maxLength": 64,
+              "example": "val_…"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          },
+          {
+            "$ref": "#/components/parameters/TypizerOrganization"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Архивирована",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeletedValidator"
+                }
+              }
+            },
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              },
+              "Typizer-Maintenance": {
+                "$ref": "#/components/headers/TypizerMaintenance"
+              },
+              "RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              }
+            }
+          },
+          "400": {
+            "description": "`invalid_id`: Некорректный идентификатор",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              },
+              "Typizer-Maintenance": {
+                "$ref": "#/components/headers/TypizerMaintenance"
+              },
+              "RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              }
+            }
+          },
+          "401": {
+            "description": "`unauthorized`: Не авторизовано",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              },
+              "Typizer-Maintenance": {
+                "$ref": "#/components/headers/TypizerMaintenance"
+              },
+              "RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              }
+            }
+          },
+          "403": {
+            "description": "`insufficient_scope`: Недостаточно прав ключа; `forbidden`: Доступ запрещён",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              },
+              "Typizer-Maintenance": {
+                "$ref": "#/components/headers/TypizerMaintenance"
+              },
+              "RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              }
+            }
+          },
+          "404": {
+            "description": "`not_found`: Не найдено",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              },
+              "Typizer-Maintenance": {
+                "$ref": "#/components/headers/TypizerMaintenance"
+              },
+              "RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              }
+            }
+          },
+          "409": {
+            "description": "`conflict`: Конфликт состояния",
             "content": {
               "application/problem+json": {
                 "schema": {

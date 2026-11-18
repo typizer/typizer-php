@@ -32,7 +32,7 @@ use Typizer\Http\Transport;
  */
 final class Client
 {
-    public const VERSION = '0.2.0';
+    public const VERSION = '0.3.0';
 
     public const DEFAULT_BASE_URL = 'https://api.typizer.ru';
 
@@ -42,7 +42,13 @@ final class Client
     private const TERMINAL_STATUSES = ['succeeded', 'failed'];
 
     /** Ключи, значение которых — всегда объект JSON, даже пустой (см. {@see encodeJson()}). */
-    private const OBJECT_KEYS = ['schema', 'metadata', 'properties', 'patternProperties', '$defs', 'definitions', 'dependentSchemas'];
+    private const OBJECT_KEYS = ['schema', 'metadata', 'spec', 'properties', 'patternProperties', '$defs', 'definitions', 'dependentSchemas'];
+
+    /**
+     * Свои проверки полей (`x-typizer-check`): `list()`, `get()`, `create()`, `update()`,
+     * `archive()`, `versions()`, `test()`, `suggest()` с именованными аргументами.
+     */
+    public readonly Validators $validators;
 
     private readonly string $apiKey;
 
@@ -102,6 +108,7 @@ final class Client
                 usleep((int) round($seconds * 1_000_000));
             }
         };
+        $this->validators = new Validators($this);
     }
 
     /** @return array<string, mixed> */
@@ -465,7 +472,7 @@ final class Client
     /**
      * `GET /v1/catalog` — каталог готовых схем документов.
      *
-     * @param array{q?: string, category?: string, kind?: string, publisher?: string, favorites?: bool, sort?: string, limit?: int, cursor?: string} $query
+     * @param array{type?: 'schema'|'validator', q?: string, category?: string, kind?: string, publisher?: string, favorites?: bool, sort?: string, limit?: int, cursor?: string} $query
      * @param RequestOptions|array<string, mixed>|null $options
      * @return array<string, mixed>
      */
@@ -477,7 +484,7 @@ final class Client
     /**
      * `GET /v1/catalog/{entry}` — схема каталога (`slug`).
      *
-     * @param array{version?: string} $query
+     * @param array{version?: string, type?: 'schema'|'validator'} $query
      * @param RequestOptions|array<string, mixed>|null $options
      * @return array<string, mixed>
      */
@@ -489,7 +496,7 @@ final class Client
     /**
      * `GET /v1/catalog/{publisher}/{slug}` — схема сообщества.
      *
-     * @param array{version?: string} $query
+     * @param array{version?: string, type?: 'schema'|'validator'} $query
      * @param RequestOptions|array<string, mixed>|null $options
      * @return array<string, mixed>
      */
@@ -512,12 +519,13 @@ final class Client
     /**
      * `GET /v1/catalog/{entry}/versions`.
      *
+     * @param 'schema'|'validator'|null $type запись каталога: схема (по умолчанию) или проверка поля
      * @param RequestOptions|array<string, mixed>|null $options
      * @return array<string, mixed>
      */
-    public function listCatalogVersions(string $entry, RequestOptions|array|null $options = null): array
+    public function listCatalogVersions(string $entry, ?string $type = null, RequestOptions|array|null $options = null): array
     {
-        return $this->json('listCatalogVersions', ['entry' => $entry], [], null, $options);
+        return $this->json('listCatalogVersions', ['entry' => $entry], ['type' => $type], null, $options);
     }
 
     /**
@@ -536,46 +544,50 @@ final class Client
      * `POST /v1/catalog/{entry}/fork` — копия схемы каталога для правки.
      *
      * @param array<string, mixed> $body
+     * @param 'schema'|'validator'|null $type запись каталога: схема (по умолчанию) или проверка поля
      * @param RequestOptions|array<string, mixed>|null $options
      * @return array<string, mixed>
      */
-    public function forkCatalogEntry(string $entry, array $body = [], RequestOptions|array|null $options = null): array
+    public function forkCatalogEntry(string $entry, array $body = [], ?string $type = null, RequestOptions|array|null $options = null): array
     {
-        return $this->json('forkCatalogEntry', ['entry' => $entry], [], $body, $options);
+        return $this->json('forkCatalogEntry', ['entry' => $entry], ['type' => $type], $body, $options);
     }
 
     /**
      * `PUT /v1/catalog/{entry}/favorite`.
      *
+     * @param 'schema'|'validator'|null $type запись каталога: схема (по умолчанию) или проверка поля
      * @param RequestOptions|array<string, mixed>|null $options
      * @return array<string, mixed>
      */
-    public function favoriteCatalogEntry(string $entry, RequestOptions|array|null $options = null): array
+    public function favoriteCatalogEntry(string $entry, ?string $type = null, RequestOptions|array|null $options = null): array
     {
-        return $this->json('favoriteCatalogEntry', ['entry' => $entry], [], null, $options);
+        return $this->json('favoriteCatalogEntry', ['entry' => $entry], ['type' => $type], null, $options);
     }
 
     /**
      * `DELETE /v1/catalog/{entry}/favorite`.
      *
+     * @param 'schema'|'validator'|null $type запись каталога: схема (по умолчанию) или проверка поля
      * @param RequestOptions|array<string, mixed>|null $options
      * @return array<string, mixed>
      */
-    public function unfavoriteCatalogEntry(string $entry, RequestOptions|array|null $options = null): array
+    public function unfavoriteCatalogEntry(string $entry, ?string $type = null, RequestOptions|array|null $options = null): array
     {
-        return $this->json('unfavoriteCatalogEntry', ['entry' => $entry], [], null, $options);
+        return $this->json('unfavoriteCatalogEntry', ['entry' => $entry], ['type' => $type], null, $options);
     }
 
     /**
      * `POST /v1/catalog/{entry}/reports` — пожаловаться на схему каталога.
      *
      * @param array<string, mixed> $body
+     * @param 'schema'|'validator'|null $type запись каталога: схема (по умолчанию) или проверка поля
      * @param RequestOptions|array<string, mixed>|null $options
      * @return array<string, mixed>
      */
-    public function reportCatalogEntry(string $entry, array $body, RequestOptions|array|null $options = null): array
+    public function reportCatalogEntry(string $entry, array $body, ?string $type = null, RequestOptions|array|null $options = null): array
     {
-        return $this->json('reportCatalogEntry', ['entry' => $entry], [], $body, $options);
+        return $this->json('reportCatalogEntry', ['entry' => $entry], ['type' => $type], $body, $options);
     }
 
     /**
@@ -600,6 +612,107 @@ final class Client
     public function applyTypizerCatalogUpdate(string $id, array $body, RequestOptions|array|null $options = null): array
     {
         return $this->json('applyTypizerCatalogUpdate', ['id' => $id], [], $body, $options);
+    }
+
+    // ------------------------------------------------------------------------------------------
+    // Проверки полей (validators; удобные обёртки — {@see Validators}, `$client->validators`)
+
+    /**
+     * `GET /v1/validators` — свои проверки организации, одна страница. Все страницы подряд —
+     * {@see Validators::list()}.
+     *
+     * @param array{limit?: int, starting_after?: string} $query
+     * @param RequestOptions|array<string, mixed>|null $options
+     * @return array<string, mixed>
+     */
+    public function listValidators(array $query = [], RequestOptions|array|null $options = null): array
+    {
+        return $this->json('listValidators', [], $query, null, $options);
+    }
+
+    /**
+     * `POST /v1/validators` — создать свою проверку `my/<slug>` версии `1.0.0`. Красный тест —
+     * `InvalidRequestException` с `param` `tests/<n>`, занятый `slug` — `ConflictException`.
+     *
+     * @param array<string, mixed> $body `name`, `spec` (объект проверки как есть), `tests`, `slug`, `description`, `changelog`
+     * @param RequestOptions|array<string, mixed>|null $options
+     * @return array<string, mixed> `Validator`
+     */
+    public function createValidator(array $body, RequestOptions|array|null $options = null): array
+    {
+        return $this->json('createValidator', [], [], $body, $options);
+    }
+
+    /**
+     * `GET /v1/validators/{id}` — проверка (`val_…`) со всеми версиями (`versions`) и типизаторами,
+     * которые на неё ссылаются (`used_by`).
+     *
+     * @param RequestOptions|array<string, mixed>|null $options
+     * @return array<string, mixed> `ValidatorDetail`
+     */
+    public function getValidator(string $id, RequestOptions|array|null $options = null): array
+    {
+        return $this->json('getValidator', ['id' => $id], [], null, $options);
+    }
+
+    /**
+     * `GET /v1/validators/my/{slug}` — проверка по ссылке `my/<slug>`.
+     *
+     * @param RequestOptions|array<string, mixed>|null $options
+     * @return array<string, mixed> `ValidatorDetail`
+     */
+    public function getValidatorBySlug(string $slug, RequestOptions|array|null $options = null): array
+    {
+        return $this->json('getValidatorBySlug', ['slug' => $slug], [], null, $options);
+    }
+
+    /**
+     * `PATCH /v1/validators/{id}` — изменить проверку; API сам выбирает новую версию (`bump`).
+     *
+     * @param array<string, mixed> $body `name`, `spec`, `tests`, `description`, `changelog`
+     * @param RequestOptions|array<string, mixed>|null $options
+     * @return array<string, mixed> `ValidatorUpdateResult`
+     */
+    public function updateValidator(string $id, array $body, RequestOptions|array|null $options = null): array
+    {
+        return $this->json('updateValidator', ['id' => $id], [], $body, $options);
+    }
+
+    /**
+     * `DELETE /v1/validators/{id}` — отправить проверку в архив. Пока на неё ссылается
+     * типизатор — `ConflictException` с `param` `used_by`.
+     *
+     * @param RequestOptions|array<string, mixed>|null $options
+     * @return array<string, mixed> `DeletedValidator`
+     */
+    public function deleteValidator(string $id, RequestOptions|array|null $options = null): array
+    {
+        return $this->json('deleteValidator', ['id' => $id], [], null, $options);
+    }
+
+    /**
+     * `POST /v1/validators/test` — прогнать значения через проверку (`ref` или `spec`) без документа.
+     *
+     * @param array<string, mixed> $body `values` (1–100) и ровно один из `ref`, `spec`
+     * @param RequestOptions|array<string, mixed>|null $options
+     * @return array<string, mixed> `ValidatorTestResult`
+     */
+    public function testValidator(array $body, RequestOptions|array|null $options = null): array
+    {
+        return $this->json('testValidator', [], [], $body, $options);
+    }
+
+    /**
+     * `POST /v1/validators/suggest` — черновик проверки по описанию и примерам (расходует агентский
+     * лимит, как `generateTypizer`).
+     *
+     * @param array<string, mixed> $body `description`, `examples` (`pass`, `fail`), `field` (`name`, `description`, `type`)
+     * @param RequestOptions|array<string, mixed>|null $options
+     * @return array<string, mixed> `ValidatorSuggestion`
+     */
+    public function suggestValidator(array $body, RequestOptions|array|null $options = null): array
+    {
+        return $this->json('suggestValidator', [], [], $body, $options);
     }
 
     // ------------------------------------------------------------------------------------------

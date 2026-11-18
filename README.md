@@ -76,6 +76,68 @@ print_r($run['output']);      // результат по вашей схеме
 или `503` ничего не создадут и не спишут дважды. Свой ключ (например, из номера заказа) передайте в
 `options: ['idempotency_key' => '…']`.
 
+### Проверки полей
+
+Поле схемы может нести проверку `x-typizer-check`: готовую (`'inn'`, `'inn@1'`), свою
+(`'my/contract-no@1'`) или объект прямо в схеме (`['kind' => 'rules', …]`) — SDK передаёт его как
+есть. Значение, не прошедшее проверку, остаётся в `output`, а поле в `$run['fields']` получает
+`status` `warn`, код `reason`, готовую фразу `message` и список `checks` (`ref`, `version`, `name`,
+`status` — `pass`/`fail`/`skipped`, `rule`, `reason`). Какие проверки и каких версий использовал
+прогон разовой схемы — `$run['checks_used']` (у прогона типизатора `null`: они в
+`$typizer->getTypizer($id)['checks']`).
+
+Прогон в PHP SDK — массив, поэтому короткий путь к предупреждениям — статическая функция
+`Typizer\Run::warnings($run)`: поля со статусом `warn` по порядку `fields`, каждое —
+`['path' => …, 'message' => …, 'reason' => …]` (`message` — `null` у прогонов и вебхуков до
+появления поля; поля `missing` сюда не входят).
+
+Свои проверки — `$typizer->validators`: `list()` (генератор по всем страницам), `get('my/contract-no')`
+или `get('val_…')`, `create(name:, spec:, tests:)`, `update($id, …)` (версию API выбирает сам —
+`bump` в ответе), `archive($id)`, `versions($ref)`, `test($values, ref: | spec:)` — прогнать
+значения без документа, `suggest(description:, examples:, field:)` — черновик по примерам.
+
+Готовые проверки каталога (ИНН, IBAN, VIN и другие) подключаются ссылкой без установки:
+`'x-typizer-check' => 'iban@1'`. Список — `$typizer->listCatalog(['type' => 'validator'])`, своя
+копия для правки — `$typizer->validators->fork('iban@1', slug: 'my-iban')`.
+
+```php
+<?php
+
+require __DIR__ . '/vendor/autoload.php';
+
+use Typizer\Run;
+
+$typizer = new Typizer\Client(getenv('TYPIZER_API_KEY'));
+
+// Проверить значения до того, как подключать проверку к схеме: без документа и без списания страниц
+$test = $typizer->validators->test(['ДГ-2026/0153', 'ДГ-26/153'], ref: 'my/contract-no@1');
+foreach ($test['results'] as $result) {
+    echo $result['value'], ': ', $result['pass'] ? 'ok' : $result['message'], PHP_EOL;
+}
+
+$run = $typizer->waitForRun($typizer->extract([
+    'url' => 'https://typizer.ru/samples/invoice.pdf',
+    'schema' => [
+        'type' => 'object',
+        'properties' => [
+            'invoice_number' => ['type' => 'string'],
+            'contract_no' => ['type' => 'string', 'x-typizer-check' => 'my/contract-no@1'],
+            'spec_no' => ['type' => 'string', 'x-typizer-check' => [
+                'kind' => 'rules',
+                'applies_to' => 'string',
+                'rules' => [['type' => 'pattern', 'pattern' => 'СП-\d{4}']],
+                'message' => 'Номер спецификации не по шаблону СП-NNNN',
+            ]],
+            'inn' => ['type' => 'string', 'x-typizer-check' => 'inn'],
+        ],
+    ],
+], wait: 60));
+
+foreach (Run::warnings($run) as $warning) {
+    echo $warning['path'], ': ', $warning['message'] ?? $warning['reason'], PHP_EOL; // показать человеку
+}
+```
+
 ## Файл с диска, из памяти или из потока
 
 Вместо `url` передайте `file` — запрос уйдёт как `multipart/form-data`, а `schema` и `metadata` SDK
@@ -378,6 +440,9 @@ print_r($typizer->getBalance());
 | `createFile(File)`, `getFile`, `deleteFile`, `getFileContent`                                                                                                                                                                                                                         | `/v1/files…`                                             |
 | `createTypizer`, `generateTypizer`, `listTypizers`, `getTypizer`, `updateTypizer`, `deleteTypizer`, `listTypizerVersions`, `getTypizerVersion`, `getTypizerXsd`                                                                                                                       | `/v1/typizers…`                                          |
 | `listCatalog`, `getCatalogEntry`, `getCommunityCatalogEntry`, `getCatalogPublisher`, `listCatalogVersions`, `installCatalogEntry`, `forkCatalogEntry`, `favoriteCatalogEntry`, `unfavoriteCatalogEntry`, `reportCatalogEntry`, `getTypizerCatalogUpdate`, `applyTypizerCatalogUpdate` | `/v1/catalog…`                                           |
+| `listValidators`, `getValidator`, `getValidatorBySlug`, `createValidator`, `updateValidator`, `deleteValidator`, `testValidator`, `suggestValidator`                                                                                                                                  | `/v1/validators…`                                        |
+| `validators->list()`, `->get($ref)`, `->create(…)`, `->update($id, …)`, `->archive($id)`, `->versions($ref)`, `->test($values, ref:/spec:)`, `->suggest(…)`, `->fork($ref)`                                                                                                           | `/v1/validators…`                                        |
+| `Run::warnings($run)` — поля `warn` с `message` и `reason`                                                                                                                                                                                                                            | без запроса                                              |
 | `createWebhookEndpoint`, `listWebhookEndpoints`, `getWebhookEndpoint`, `updateWebhookEndpoint`, `deleteWebhookEndpoint`, `testWebhookEndpoint`, `listWebhookDeliveries`, `retryWebhookDelivery`                                                                                       | `/v1/webhook_endpoints…`                                 |
 | `getMe`, `getOrganization`, `getBalance`, `getUsage($query)`                                                                                                                                                                                                                          | `/v1/me`, `/v1/organization`, `/v1/balance`, `/v1/usage` |
 | `getStatus`, `getOpenApiDocument`                                                                                                                                                                                                                                                     | `/v1/status`, `/v1/openapi.json`                         |

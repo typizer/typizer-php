@@ -121,6 +121,18 @@ $run = static fn (string $status, ?array $output = null): array => [
     'typizer_id' => null,
     'metadata' => [],
     'output' => $output,
+    'fields' => $output === null ? null : [
+        'invoice_number' => ['status' => 'ok', 'sources' => []],
+        'contract_no' => [
+            'status' => 'warn',
+            'reason' => 'pattern_mismatch',
+            'message' => 'Номер договора не по шаблону ДГ-ГГГГ/NNNN',
+            'checks' => [['ref' => 'my/contract-no', 'version' => '1.0.0', 'name' => 'Номер договора', 'status' => 'fail', 'rule' => 'pattern', 'reason' => 'pattern_mismatch']],
+            'sources' => [],
+        ],
+        'inn' => ['status' => 'ok', 'checks' => [['ref' => 'inn', 'version' => '1.0.0', 'name' => 'ИНН', 'status' => 'pass', 'rule' => 'checksum']], 'sources' => []],
+    ],
+    'checks_used' => $output === null ? null : [['ref' => 'my/contract-no@1', 'version' => '1.0.0', 'name' => 'Номер договора']],
     'error' => null,
     'created_at' => '2026-11-13T00:00:00Z',
     'completed_at' => $status === 'succeeded' ? '2026-11-13T00:00:05Z' : null,
@@ -159,6 +171,15 @@ switch (true) {
         break;
     case $method === 'GET' && preg_match('#^/v1/runs/[^/]+$#', $path) === 1:
         $json(200, $run('succeeded', $output));
+        break;
+    case $method === 'POST' && $path === '/v1/validators/test':
+        $request = json_decode($body, true);
+        $json(200, ['object' => 'validator_test', 'explain' => 'Номер договора: ДГ-ГГГГ/NNNN', 'results' => array_map(
+            static fn ($value): array => preg_match('#^ДГ-\\d{4}/\\d{4}$#u', (string) $value) === 1
+                ? ['value' => $value, 'pass' => true, 'reason' => null, 'message' => null, 'rule_index' => null]
+                : ['value' => $value, 'pass' => false, 'reason' => 'pattern_mismatch', 'message' => 'Номер договора не по шаблону ДГ-ГГГГ/NNNN', 'rule_index' => 0],
+            $request['values'] ?? [],
+        )]);
         break;
     case $method === 'POST' && $path === '/v1/files':
         $json(201, ['id' => 'file_fake', 'object' => 'file']);
